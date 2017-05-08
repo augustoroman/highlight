@@ -286,16 +286,23 @@ func (c *ColorizerWriter) pickLineColor(line []byte) string {
 	return c.DefaultColor
 }
 
+type event struct {
+	typ   int // true if the color is starting, false if ending
+	color string
+	pos   int
+}
+
+type ByPos []event
+
+func (s ByPos) Len() int           { return len(s) }
+func (s ByPos) Swap(a, b int)      { s[a], s[b] = s[b], s[a] }
+func (s ByPos) Less(a, b int) bool { return s[a].pos < s[b].pos }
+
 func (c *ColorizerWriter) applyWordRules(line []byte, lineColor string) []byte {
 	const (
 		START = iota
 		STOP
 	)
-	type event struct {
-		typ   int // true if the color is starting, false if ending
-		color string
-		pos   int
-	}
 	var events []event
 
 	NUM_RULES := len(c.WordRules)
@@ -315,9 +322,7 @@ func (c *ColorizerWriter) applyWordRules(line []byte, lineColor string) []byte {
 	}
 
 	// Sort the events by position. This will split up the start/stop events.
-	sort.SliceStable(events, func(i, j int) bool {
-		return events[i].pos < events[j].pos
-	})
+	sort.Sort(ByPos(events))
 
 	colorStack := []string{lineColor}
 	var lineOut []byte
